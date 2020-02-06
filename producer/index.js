@@ -1,36 +1,37 @@
 const { Kafka, CompressionTypes, logLevel } = require('kafkajs')
-
-const host = process.env.HOST_IP
+const { brokers, clientId } = require('./config')
+const { generateEvent } = require('./seeds')
 
 const kafka = new Kafka({
   logLevel: logLevel.DEBUG,
-  brokers: [`${host}:9092`],
-  clientId: 'example-producer'
+  brokers,
+  clientId
 })
 
 const topic = 'topic-test'
 const producer = kafka.producer()
+const randomNumber = () => Math.round(Math.random(10) * 10)
 
-const getRandomNumber = () => Math.round(Math.random(10) * 1000)
-const createMessage = (num) => ({
-  key: `key-${num}`,
-  value: `value-${num}-${new Date().toISOString()}`
-})
+const createMessage = (times) => Array(times)
+  .fill()
+  .map(generateEvent)
+  .map((event) => ({ value: JSON.stringify(event) }))
 
 const logError = (e) => console.error(`[example/producer] ${e.message}`, e)
+const logEvent = (e) => console.info('[example/producer] Sending messages: ', e)
 
-const sendMessage = () => (
+const sendMessage = () => {
+  const messages = createMessage(randomNumber())
+
   producer
     .send({
       topic,
       compression: CompressionTypes.GZIP,
-      messages: Array(2)
-        .fill()
-        .map(() => createMessage(getRandomNumber()))
+      messages
     })
-    .then(console.log)
+    .then(_ => logEvent(messages))
     .catch(logError)
-)
+}
 
 const run = () => (
   producer
